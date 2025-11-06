@@ -21,7 +21,8 @@ jobs:
           sudo -n apt-get install -y libfreetype6-dev libcurl4-openssl-dev libsdl2-dev libsdl2-image-dev
           # Update and install devkitpro packages
           (dkp-pacman -Syu || true)
-          dkp-pacman -S --noconfirm switch-freetype switch-sdl2 switch-sdl2_image switch-libcurl switch-libjpeg-turbo switch-libpng switch-libwebp switch-minizip switch-libjson-c switch-tinyxml2
+          # Use correct package names for devkitpro
+          dkp-pacman -S --noconfirm switch-freetype switch-sdl2 switch-sdl2_image switch-curl switch-libjpeg-turbo switch-libpng switch-libwebp switch-zlib switch-libjson-c switch-tinyxml2
         shell: bash
       - name: Update latest libnx
         run: |

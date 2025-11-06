@@ -23,6 +23,10 @@ jobs:
           (dkp-pacman -Syu || true)
           # Use correct package names for devkitpro
           dkp-pacman -S --noconfirm switch-freetype switch-sdl2 switch-sdl2_image switch-curl switch-libjpeg-turbo switch-libpng switch-libwebp switch-zlib switch-libjson-c switch-tinyxml2
+          # Verify freetype installation
+          ls -la /opt/devkitpro/portlibs/switch/include/freetype2/
+          # Set PKG_CONFIG_PATH to find devkitpro libraries
+          echo "PKG_CONFIG_PATH=/opt/devkitpro/portlibs/switch/lib/pkgconfig" >> $GITHUB_ENV
         shell: bash
       - name: Update latest libnx
         run: |
@@ -49,7 +53,14 @@ jobs:
       - name: Build
         run: |
           export DEVKITPRO=/opt/devkitpro
-          make -j$(nproc)
+          export PKG_CONFIG_PATH=/opt/devkitpro/portlibs/switch/lib/pkgconfig
+          # Use the correct freetype-config path
+          export PATH=$PATH:/opt/devkitpro/portlibs/switch/bin
+          # Check if freetype-config exists
+          which freetype-config || echo "freetype-config not in PATH, trying direct path"
+          ls -la /opt/devkitpro/portlibs/switch/bin/ || echo "Portlibs bin directory not found"
+          # Build with explicit include paths
+          make -j$(nproc) CFLAGS="-I/opt/devkitpro/portlibs/switch/include -I/opt/devkitpro/portlibs/switch/include/freetype2"
         shell: bash
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2.0.9

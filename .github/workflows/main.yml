@@ -87,6 +87,13 @@ jobs:
             touch /opt/devkitpro/portlibs/switch/include/freetype2/ft2build.h
           fi
           
+          # Remove the unused requestList function from gd.cpp
+          echo "Removing unused requestList function from gd.cpp"
+          sed -i '/static int requestList/,/return ret;/d' src/gd.cpp
+          
+          # Add a comment in place of the removed function
+          sed -i '/static void processList/i\// This function was removed as it was defined but not used\n' src/gd.cpp
+          
           # Build with explicit paths and ignoring freetype-config where necessary
           make -j$(nproc) \
             CFLAGS="-I/opt/devkitpro/portlibs/switch/include -I/opt/devkitpro/portlibs/switch/include/freetype2" \

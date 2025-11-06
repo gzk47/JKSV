@@ -17,6 +17,11 @@ jobs:
         run: |
           sudo -n apt-get update
           sudo -n apt-get upgrade -y git build-essential
+          # Install required libraries including freetype
+          sudo -n apt-get install -y libfreetype6-dev
+          # Install devkitpro packages
+          (dkp-pacman -Syu || true)
+          dkp-pacman -S --noconfirm switch-freetype
         shell: bash
       - name: Update latest libnx
         run: |

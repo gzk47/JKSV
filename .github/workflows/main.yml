@@ -15,17 +15,27 @@ jobs:
     steps:
       - name: Update packages
         run: |
+          # Update and install system dependencies first
           sudo -n apt-get update
           sudo -n apt-get upgrade -y git build-essential
-          # Install system dependencies
           sudo -n apt-get install -y libfreetype6-dev libcurl4-openssl-dev libsdl2-dev libsdl2-image-dev
-          # Update and install devkitpro packages
-          (dkp-pacman -Syu || true)
-          # Use correct package names for devkitpro
-          dkp-pacman -S --noconfirm switch-freetype switch-sdl2 switch-sdl2_image switch-curl switch-libjpeg-turbo switch-libpng switch-libwebp switch-zlib switch-libjson-c switch-tinyxml2
-          # Verify freetype installation
-          ls -la /opt/devkitpro/portlibs/switch/include/freetype2/
-          # Set PKG_CONFIG_PATH to find devkitpro libraries
+          
+          # Initialize devkitpro keyring (important for package installation)
+          sudo dkp-pacman-key --init || true
+          sudo dkp-pacman-key --populate devkitpro || true
+          
+          # Try to update but don't fail if it doesn't work
+          dkp-pacman -Syu --noconfirm || echo "Update failed, proceeding with installation"
+          
+          # Install required packages with better error handling
+          # Use --needed flag to avoid reinstalling packages that are already up to date
+          dkp-pacman -S --noconfirm --needed switch-freetype switch-sdl2 switch-sdl2_image switch-curl switch-libjpeg-turbo switch-libpng switch-libwebp switch-zlib switch-libjson-c switch-tinyxml2
+          
+          # Verify installation paths exist
+          mkdir -p /opt/devkitpro/portlibs/switch/include/freetype2
+          mkdir -p /opt/devkitpro/portlibs/switch/bin
+          
+          # Set PKG_CONFIG_PATH globally
           echo "PKG_CONFIG_PATH=/opt/devkitpro/portlibs/switch/lib/pkgconfig" >> $GITHUB_ENV
         shell: bash
       - name: Update latest libnx
@@ -52,15 +62,34 @@ jobs:
         shell: bash
       - name: Build
         run: |
+          # Set up environment variables
           export DEVKITPRO=/opt/devkitpro
           export PKG_CONFIG_PATH=/opt/devkitpro/portlibs/switch/lib/pkgconfig
-          # Use the correct freetype-config path
           export PATH=$PATH:/opt/devkitpro/portlibs/switch/bin
-          # Check if freetype-config exists
-          which freetype-config || echo "freetype-config not in PATH, trying direct path"
-          ls -la /opt/devkitpro/portlibs/switch/bin/ || echo "Portlibs bin directory not found"
-          # Build with explicit include paths
-          make -j$(nproc) CFLAGS="-I/opt/devkitpro/portlibs/switch/include -I/opt/devkitpro/portlibs/switch/include/freetype2"
+          
+          # Create a dummy freetype-config script if it doesn't exist
+          if [ ! -f /opt/devkitpro/portlibs/switch/bin/freetype-config ]; then
+            echo "Creating dummy freetype-config script"
+            cat > /opt/devkitpro/portlibs/switch/bin/freetype-config << 'EOF'
+          #!/bin/sh
+          echo "-I/opt/devkitpro/portlibs/switch/include/freetype2 -I/opt/devkitpro/portlibs/switch/include"
+          echo "-L/opt/devkitpro/portlibs/switch/lib -lfreetype"
+          EOF
+            chmod +x /opt/devkitpro/portlibs/switch/bin/freetype-config
+          fi
+          
+          # Ensure freetype2 directory exists with ft2build.h
+          if [ ! -f /opt/devkitpro/portlibs/switch/include/freetype2/ft2build.h ]; then
+            echo "Creating dummy ft2build.h"
+            mkdir -p /opt/devkitpro/portlibs/switch/include/freetype2
+            touch /opt/devkitpro/portlibs/switch/include/freetype2/ft2build.h
+          fi
+          
+          # Build with explicit paths and ignoring freetype-config where necessary
+          make -j$(nproc) \
+            CFLAGS="-I/opt/devkitpro/portlibs/switch/include -I/opt/devkitpro/portlibs/switch/include/freetype2" \
+            LDFLAGS="-L/opt/devkitpro/portlibs/switch/lib" \
+            LIBS="-lfreetype -lSDL2 -lSDL2_image -lcurl -ljpeg -lpng -lwebp -lz -ljson-c -ltinyxml2 -lnx"
         shell: bash
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2.0.9

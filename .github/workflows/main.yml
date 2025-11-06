@@ -53,6 +53,8 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           submodules: recursive
+          # 添加token以确保完整访问权限
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup ENV parameters
         run: |
           VER_FILE=Makefile
@@ -102,3 +104,6 @@ jobs:
           make_latest: true
           files: |
             ./JKSV.nro
+        # 显式提供GitHub token以确保发布权限
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

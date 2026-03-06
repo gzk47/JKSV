@@ -34,11 +34,11 @@ TARGET		:=	JKSV
 BUILD		:=	build
 SOURCES		:=	src src/ui src/fs src/gfx
 DATA		:=	data
-INCLUDES	:=	inc inc/ui inc/fs inc/gfx
+INCLUDES	:=	inc inc/ui inc/fs inc/gfx /opt/devkitpro/portlibs/switch/include/freetype2
 EXEFS_SRC	:=	exefs_src
 APP_TITLE   :=  JKSV
-APP_AUTHOR  :=  JK
-APP_VERSION :=  11.5.2024
+APP_AUTHOR  :=  JK, gzk_47
+APP_VERSION :=  11.5.2024-ABI
 ROMFS	    :=	romfs
 ICON		:=	icon.jpg
 
@@ -48,15 +48,15 @@ ICON		:=	icon.jpg
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
 override CFLAGS	+=	$(INCLUDE) -D__SWITCH__
-override CFLAGS += 	`sdl2-config --cflags` `freetype-config --cflags` `curl-config --cflags`
+override CFLAGS += 	`sdl2-config --cflags` -I/opt/devkitpro/portlibs/switch/include/freetype2 `curl-config --cflags`
 override CFLAGS	+=	-g -Wall -O2 -ffunction-sections -ffast-math $(ARCH) $(DEFINES)
 
 CXXFLAGS:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS	=	-L/opt/devkitpro/portlibs/switch/lib -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= `sdl2-config --libs` `freetype-config --libs` `curl-config --libs` -lSDL2_image -lwebp -lpng -ljpeg -lz -lminizip -ljson-c -ltinyxml2 -lnx
+LIBS	:= `sdl2-config --libs` -L/opt/devkitpro/portlibs/switch/lib -lfreetype -lharfbuzz -lbz2 `curl-config --libs` -lSDL2_image -lwebp -lpng -ljpeg -lz -lminizip -ljson-c -ltinyxml2 -lnx
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

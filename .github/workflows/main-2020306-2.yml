@@ -1,0 +1,70 @@
+name: Build JKSV (WebDAV Only - No GD)-2020306-2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Fix Git Safe Directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Install All Dependencies
+        run: |
+          sudo -n dkp-pacman -S --noconfirm \
+            switch-freetype switch-harfbuzz switch-bzip2 \
+            switch-sdl2 switch-sdl2_image switch-libpng \
+            switch-libjpeg-turbo switch-curl switch-libwebp \
+            switch-tinyxml2 switch-zlib
+
+      - name: Fix driveInit Undefined Reference
+        run: |
+          sed -i '/driveInit()/s/^/\/\//g' src/fs/remote.cpp
+          
+          sed -i '/void fs::driveInit()/,/^}/ s/^/\/\//g' src/fs/remote.cpp
+          
+          sed -i '1i #if 0' src/gd.cpp && sed -i '$a #endif' src/gd.cpp
+
+      - name: Get Version & Short Hash
+        id: get_info
+        run: |
+          APP_VERSION=$(grep '^APP_VERSION :=' Makefile | awk -F '=' '{gsub(/ /,""); print $2}')
+          SHORT_HASH=$(git rev-parse --short HEAD)
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "short_hash=$SHORT_HASH" >> $GITHUB_OUTPUT
+          echo "Version: $APP_VERSION, Short Hash: $SHORT_HASH"
+
+      - name: Build JKSV.nro
+        run: |
+          make clean
+          make -j$(nproc)
+        env:
+          DEVKITPRO: /opt/devkitpro
+          DEVKITARM: /opt/devkitpro/devkitARM
+          DEVKITPPC: /opt/devkitpro/devkitPPC
+          CFLAGS: "-I/opt/devkitpro/portlibs/switch/include -I/opt/devkitpro/portlibs/switch/include/freetype2"
+          CXXFLAGS: "-I/opt/devkitpro/portlibs/switch/include -I/opt/devkitpro/portlibs/switch/include/freetype2"
+
+      - name: Upload JKSV.nro
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_info.outputs.app_version }}-${{ steps.get_info.outputs.short_hash }}
+          name: JKSV-${{ steps.get_info.outputs.app_version }}(${{ steps.get_info.outputs.short_hash }})
+          files: JKSV.nro
+          body: |
+            ✅ WebDAV 功能正常
+            ❌ Google Drive 功能已禁用
+            🟢 版本号：${{ steps.get_info.outputs.app_version }}
+            🟢 Git 哈希：${{ steps.get_info.outputs.short_hash }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

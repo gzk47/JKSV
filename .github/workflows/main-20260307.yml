@@ -1,0 +1,49 @@
+name: Build JKSV - 20260307
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Git Safe Directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Get Version & Short Hash
+        id: get_info
+        run: |
+          APP_VERSION=$(grep '^APP_VERSION :=' Makefile | awk -F '=' '{gsub(/ /,""); print $2}')
+          SHORT_HASH=$(git rev-parse --short HEAD)
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "short_hash=$SHORT_HASH" >> $GITHUB_OUTPUT
+          echo "Version: $APP_VERSION, Short Hash: $SHORT_HASH"
+
+      - name: Build JKSV.nro
+        run: |
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=/opt/devkitpro/devkitARM
+          export DEVKITPPC=/opt/devkitpro/devkitPPC
+          make -j$(nproc)
+      - name: Upload JKSV.nro
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_info.outputs.app_version }}-${{ steps.get_info.outputs.short_hash }}
+          name: JKSV-${{ steps.get_info.outputs.app_version }}(${{ steps.get_info.outputs.short_hash }})
+          files: JKSV.nro
+          body: |
+            ✅ WebDAV 功能正常
+            ✅ Google Drive 功能正常
+            🟢 版本号：${{ steps.get_info.outputs.app_version }}
+            🟢 Git 哈希：${{ steps.get_info.outputs.short_hash }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
